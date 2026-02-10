@@ -4,13 +4,13 @@ Run Flutter and Dart maintenance commands across all Flutter modules in your VS 
 
 ## Features
 
-- **Dashboard view** with one-click actions
-- **Cache tools**: repair or clean Flutter/Dart caches
-- **Workspace tools**: clean, pub get/upgrade, outdated checks
-- **Git helpers**: revert pubspec.yaml, pull/update, change branches
+- **General tools**: repair or clean Flutter/Dart caches
+- **Per-module tools**: clean, pub get/upgrade, outdated checks
+- **Git helpers**: revert pubspec.yaml, pull/update, change branch
 - **Local dependencies**: convert matching dependencies to local path references
 - **Checks**: run format, build_runner, analyze, and tests on a selected module
-- **Custom command**: run any shell command across all modules
+- **Workspace tools**: prepare/update workspace
+- **Super general**: run a custom command on every module
 
 ## Quick Start
 
@@ -34,6 +34,31 @@ Available from the Command Palette:
 - **Multi-Module Flutter: Change Branch (All)**
 - **Multi-Module Flutter: Run Checks**
 - **Multi-Module Flutter: Run Custom Command (All)**
+- **Multi-Module Flutter: Prepare/Update Workspace**
+
+## Dashboard Actions Explained
+
+General:
+- **Repair Cache**: Runs `flutter pub cache repair` and `dart pub cache repair` in each workspace root.
+- **Clean Cache**: Runs `flutter pub cache clean --force` and `dart pub cache clean --force` in each workspace root.
+
+Workspace:
+- **Clean**: Runs `flutter clean` in every Flutter module and removes `pubspec.lock` if present.
+- **Pub Get**: Runs `flutter pub get` in every Flutter module.
+- **Pub Upgrade**: Runs `flutter pub upgrade` in every Flutter module.
+- **Outdated**: Runs `flutter pub outdated` in every Flutter module.
+
+Workspace Management:
+- **Prepare**: Placeholder, not available without an explicit workflow.
+
+Git:
+- **Revert**: Reverts `pubspec.yaml` in every Flutter module (`git checkout --quiet pubspec.yaml`).
+- **Pull**: Stashes local changes, pulls with rebase, then restores the stash in every module.
+- **Branch**: Prompts for a branch name and checks it out in every module.
+
+Helpers:
+- **Local Deps**: Converts matching dependencies in `pubspec.yaml` to local `path: ../<package>` references.
+- **Checks**: Runs `dart format`, `build_runner clean`, `build_runner build`, `flutter analyze`, `flutter test` on a selected module.
 
 ## Settings
 

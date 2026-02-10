@@ -56,7 +56,10 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
     );
 
     const config = vscode.workspace.getConfiguration("multiModuleFlutter");
-    const buttonSize = config.get<number>("toolbarButtonSize", 75);
+    const buttonSize = Math.max(
+      40,
+      config.get<number>("toolbarButtonSize", 75),
+    );
     const buttonHeight = `${buttonSize}px`;
 
     const nonce = getNonce();
@@ -92,7 +95,7 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
           }
           .toolbar {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(var(--button-height), 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(var(--button-height), var(--button-height)));
             gap: 10px;
           }
           button {
@@ -105,8 +108,8 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
             background: var(--vscode-button-hoverBackground);
           }
           .icon-btn {
-            width: 100%;
-            aspect-ratio: 1 / 1;
+            width: var(--button-height);
+            height: var(--button-height);
             padding: 10px 4px;
             display: flex;
             flex-direction: column;
@@ -122,7 +125,7 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
           .btn-label {
             font-size: 0.9em;
             text-align: center;
-            line-height: 1.1;
+            line-height: 1;
             font-weight: 500;
           }
         </style>

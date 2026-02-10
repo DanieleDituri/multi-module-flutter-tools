@@ -2,10 +2,10 @@
   "name": "multi-module-flutter-tools",
   "displayName": "Multi Module Flutter Tools",
   "description": "Run Flutter and Dart commands across all Flutter modules in your VS Code workspace.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "DanieleDituri",
   "license": "MIT",
-  "icon": "images/icon.svg",
+  "icon": "images/icon.png",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -42,14 +42,14 @@
         "multiModuleFlutter.scanNested": {
           "type": "boolean",
           "default": true,
-          "description": "Scan workspace folders recursively to discover Flutter projects (pubspec.yaml)."
+          "description": "Scan workspace folders recursively to discover Flutter modules (pubspec.yaml)."
         },
         "multiModuleFlutter.maxDepth": {
           "type": "number",
           "default": 2,
           "minimum": 0,
           "maximum": 8,
-          "description": "Maximum directory depth to scan for Flutter projects. 0 means only the folder itself; 1 scans immediate children, etc."
+          "description": "Maximum directory depth to scan for Flutter modules. 0 means only the folder itself; 1 scans immediate children, etc."
         },
         "multiModuleFlutter.excludeFolders": {
           "type": "array",

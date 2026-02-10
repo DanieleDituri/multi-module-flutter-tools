@@ -91,7 +91,7 @@ async function pickProject(
   }));
 
   const choice = await vscode.window.showQuickPick(picks, {
-    placeHolder: "Select a Flutter project",
+    placeHolder: "Select a Flutter module",
   });
 
   return choice?.project;
@@ -105,7 +105,7 @@ async function runProjectOperation(
 ) {
   const projectList = projects ?? (await getAllProjects());
   if (projectList.length === 0) {
-    vscode.window.showWarningMessage("No Flutter projects found.");
+    vscode.window.showWarningMessage("No Flutter modules found.");
     return;
   }
 
@@ -114,7 +114,7 @@ async function runProjectOperation(
   await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
-      title: `${operationName} on ${projectList.length} project(s)`,
+      title: `${operationName} on ${projectList.length} module(s)`,
       cancellable: true,
     },
     async (
@@ -439,7 +439,7 @@ export function activate(context: vscode.ExtensionContext) {
   const runChecksOnProject = async () => {
     const projects = await getAllProjects();
     if (projects.length === 0) {
-      vscode.window.showWarningMessage("No Flutter projects found.");
+      vscode.window.showWarningMessage("No Flutter modules found.");
       return;
     }
 
@@ -490,7 +490,7 @@ export function activate(context: vscode.ExtensionContext) {
   const runCustomCommandAll = async () => {
     const command = await vscode.window.showInputBox({
       title: "Command to run",
-      prompt: "Enter a shell command to run in every Flutter project",
+      prompt: "Enter a shell command to run in every Flutter module",
       value: "flutter pub get",
     });
     if (!command) {
@@ -507,6 +507,7 @@ export function activate(context: vscode.ExtensionContext) {
       output,
     );
   };
+
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
