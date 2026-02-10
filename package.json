@@ -1,0 +1,214 @@
+{
+  "name": "multi-module-flutter-tools",
+  "displayName": "Multi Module Flutter Tools",
+  "description": "Run Flutter and Dart commands across all Flutter modules in your VS Code workspace.",
+  "version": "0.1.0",
+  "publisher": "DanieleDituri",
+  "license": "MIT",
+  "icon": "images/icon.svg",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "flutter",
+    "dart",
+    "workspace",
+    "multi-module"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onView:multi-module-flutter-view",
+    "onCommand:multi-module-flutter-tools.cacheRepair",
+    "onCommand:multi-module-flutter-tools.cacheClean",
+    "onCommand:multi-module-flutter-tools.cleanWorkspaces",
+    "onCommand:multi-module-flutter-tools.pubGetAll",
+    "onCommand:multi-module-flutter-tools.pubUpgradeAll",
+    "onCommand:multi-module-flutter-tools.pubOutdatedAll",
+    "onCommand:multi-module-flutter-tools.revertPubspec",
+    "onCommand:multi-module-flutter-tools.pullUpdateAll",
+    "onCommand:multi-module-flutter-tools.depsToLocal",
+    "onCommand:multi-module-flutter-tools.changeBranchAll",
+    "onCommand:multi-module-flutter-tools.runChecks",
+    "onCommand:multi-module-flutter-tools.runCustomAll"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Multi Module Flutter Tools",
+      "properties": {
+        "multiModuleFlutter.scanNested": {
+          "type": "boolean",
+          "default": true,
+          "description": "Scan workspace folders recursively to discover Flutter projects (pubspec.yaml)."
+        },
+        "multiModuleFlutter.maxDepth": {
+          "type": "number",
+          "default": 2,
+          "minimum": 0,
+          "maximum": 8,
+          "description": "Maximum directory depth to scan for Flutter projects. 0 means only the folder itself; 1 scans immediate children, etc."
+        },
+        "multiModuleFlutter.excludeFolders": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [
+            "node_modules",
+            ".git",
+            ".dart_tool",
+            "dist",
+            "build",
+            "out",
+            ".next",
+            ".cache"
+          ],
+          "description": "Folder names to exclude during project scanning."
+        },
+        "multiModuleFlutter.toolbarButtonSize": {
+          "type": "number",
+          "default": 75,
+          "minimum": 40,
+          "maximum": 150,
+          "description": "Height of the toolbar buttons in pixels (40-150). Default is 75px."
+        },
+        "multiModuleFlutter.useFvm": {
+          "type": "boolean",
+          "default": false,
+          "description": "Prefix flutter/dart commands with fvm."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "multi-module-flutter-tools.cacheRepair",
+        "title": "Multi-Module Flutter: Repair Cache",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.cacheClean",
+        "title": "Multi-Module Flutter: Clean Cache",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.cleanWorkspaces",
+        "title": "Multi-Module Flutter: Clean Workspaces",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.pubGetAll",
+        "title": "Multi-Module Flutter: Pub Get (All)",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.pubUpgradeAll",
+        "title": "Multi-Module Flutter: Pub Upgrade (All)",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.pubOutdatedAll",
+        "title": "Multi-Module Flutter: Pub Outdated (All)",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.revertPubspec",
+        "title": "Multi-Module Flutter: Revert pubspec.yaml (All)",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.pullUpdateAll",
+        "title": "Multi-Module Flutter: Pull/Update (All)",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.depsToLocal",
+        "title": "Multi-Module Flutter: Use Local Dependencies",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.changeBranchAll",
+        "title": "Multi-Module Flutter: Change Branch (All)",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.runChecks",
+        "title": "Multi-Module Flutter: Run Checks",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.runCustomAll",
+        "title": "Multi-Module Flutter: Run Custom Command (All)",
+        "category": "Flutter (Multi-Module)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        { "command": "multi-module-flutter-tools.cacheRepair" },
+        { "command": "multi-module-flutter-tools.cacheClean" },
+        { "command": "multi-module-flutter-tools.cleanWorkspaces" },
+        { "command": "multi-module-flutter-tools.pubGetAll" },
+        { "command": "multi-module-flutter-tools.pubUpgradeAll" },
+        { "command": "multi-module-flutter-tools.pubOutdatedAll" },
+        { "command": "multi-module-flutter-tools.revertPubspec" },
+        { "command": "multi-module-flutter-tools.pullUpdateAll" },
+        { "command": "multi-module-flutter-tools.depsToLocal" },
+        { "command": "multi-module-flutter-tools.changeBranchAll" },
+        { "command": "multi-module-flutter-tools.runChecks" },
+        { "command": "multi-module-flutter-tools.runCustomAll" }
+      ]
+    },
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "multi-module-flutter-explorer",
+          "title": "Flutter Tools",
+          "icon": "images/sidebar-icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "multi-module-flutter-explorer": [
+        {
+          "type": "webview",
+          "id": "multi-module-flutter-view",
+          "name": "Dashboard"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "@types/vscode": "^1.90.0",
+    "@typescript-eslint/eslint-plugin": "^8.45.0",
+    "@typescript-eslint/parser": "^8.45.0",
+    "@vscode/test-cli": "^0.0.11",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.2",
+    "esbuild": "^0.25.10",
+    "eslint": "^9.36.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@vscode/codicons": "^0.0.43",
+    "simple-git": "^3.30.0"
+  }
+}
