@@ -118,13 +118,15 @@ async function runProjectOperation(
       cancellable: true,
     },
     async (
-      _progress: vscode.Progress<{ message?: string; increment?: number }>,
+      progress: vscode.Progress<{ message?: string; increment?: number }>,
       token: vscode.CancellationToken,
     ) => {
+      const increment = 100 / projectList.length;
       for (const project of projectList) {
         if (token.isCancellationRequested) {
           break;
         }
+        progress.report({ message: project.name, increment });
         output.appendLine(`\n=== ${project.name} » ${operationName} ===`);
         try {
           await action(project);
@@ -158,13 +160,15 @@ async function runWorkspaceOperation(
       cancellable: true,
     },
     async (
-      _progress: vscode.Progress<{ message?: string; increment?: number }>,
+      progress: vscode.Progress<{ message?: string; increment?: number }>,
       token: vscode.CancellationToken,
     ) => {
+      const increment = 100 / roots.length;
       for (const root of roots) {
         if (token.isCancellationRequested) {
           break;
         }
+        progress.report({ message: path.basename(root), increment });
         output.appendLine(`\n=== ${path.basename(root)} » ${operationName} ===`);
         try {
           await action(root);
@@ -468,13 +472,15 @@ export function activate(context: vscode.ExtensionContext) {
         cancellable: true,
       },
       async (
-        _progress: vscode.Progress<{ message?: string; increment?: number }>,
+        progress: vscode.Progress<{ message?: string; increment?: number }>,
         token: vscode.CancellationToken,
       ) => {
+        const increment = 100 / steps.length;
         for (const step of steps) {
           if (token.isCancellationRequested) {
             break;
           }
+          progress.report({ message: step.label, increment });
           output.appendLine(`\n=== ${project.name} » ${step.label} ===`);
           const result = await runShellCommand(step.command, project.path);
           appendCommandOutput(output, step.command, result);
