@@ -1,17 +1,12 @@
 import * as vscode from "vscode";
 import * as path from "node:path";
 import * as fs from "node:fs/promises";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import { spawn } from "node:child_process";
 import { simpleGit, SimpleGit } from "simple-git";
 import { getAllFlutterProjects } from "./repoDiscovery";
 import { MultiModuleViewProvider } from "./multiModuleViewProvider.js";
 
 export type ProjectInfo = { name: string; path: string };
-
-type CommandResult = { ok: boolean; stdout: string; stderr: string };
-
-const execAsync = promisify(exec);
 
 function createOutput(): vscode.OutputChannel {
   return vscode.window.createOutputChannel("Multi Module Flutter Tools");
@@ -37,38 +32,42 @@ function applyFvmProxy(command: string): string {
   return command;
 }
 
-async function runShellCommand(
+function runShellCommand(
   command: string,
-  cwd?: string,
-): Promise<CommandResult> {
-  const proxied = applyFvmProxy(command);
-  try {
-    const { stdout, stderr } = await execAsync(proxied, {
-      cwd,
-      maxBuffer: 10 * 1024 * 1024,
-    });
-    return { ok: true, stdout: stdout ?? "", stderr: stderr ?? "" };
-  } catch (error: any) {
-    return {
-      ok: false,
-      stdout: error?.stdout ?? "",
-      stderr: error?.stderr ?? error?.message ?? "Unknown error",
-    };
-  }
-}
-
-function appendCommandOutput(
+  cwd: string | undefined,
   output: vscode.OutputChannel,
-  command: string,
-  result: CommandResult,
-) {
-  output.appendLine(`$ ${applyFvmProxy(command)}`);
-  if (result.stdout) {
-    output.append(result.stdout.endsWith("\n") ? result.stdout : `${result.stdout}\n`);
-  }
-  if (result.stderr) {
-    output.append(result.stderr.endsWith("\n") ? result.stderr : `${result.stderr}\n`);
-  }
+  token?: vscode.CancellationToken,
+): Promise<{ ok: boolean }> {
+  const proxied = applyFvmProxy(command);
+  output.appendLine(`$ ${proxied}`);
+
+  return new Promise((resolve) => {
+    const child = spawn("sh", ["-c", proxied], { cwd });
+
+    const cancelDisposable = token?.onCancellationRequested(() => {
+      child.kill();
+      resolve({ ok: false });
+    });
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      output.append(chunk.toString());
+    });
+
+    child.stderr.on("data", (chunk: Buffer) => {
+      output.append(chunk.toString());
+    });
+
+    child.on("close", (code) => {
+      cancelDisposable?.dispose();
+      resolve({ ok: code === 0 });
+    });
+
+    child.on("error", (err) => {
+      cancelDisposable?.dispose();
+      output.appendLine(`Error: ${err.message}`);
+      resolve({ ok: false });
+    });
+  });
 }
 
 async function getAllProjects(): Promise<ProjectInfo[]> {
@@ -100,7 +99,7 @@ async function pickProject(
 async function runProjectOperation(
   operationName: string,
   projects: ProjectInfo[] | undefined,
-  action: (project: ProjectInfo) => Promise<void>,
+  action: (project: ProjectInfo, token: vscode.CancellationToken) => Promise<void>,
   output: vscode.OutputChannel,
 ) {
   const projectList = projects ?? (await getAllProjects());
@@ -110,6 +109,7 @@ async function runProjectOperation(
   }
 
   output.clear();
+  output.show(true);
 
   await vscode.window.withProgress(
     {
@@ -129,7 +129,7 @@ async function runProjectOperation(
         progress.report({ message: project.name, increment });
         output.appendLine(`\n=== ${project.name} » ${operationName} ===`);
         try {
-          await action(project);
+          await action(project, token);
         } catch (error: any) {
           output.appendLine(`Error: ${error?.message || error}`);
         }
@@ -140,7 +140,7 @@ async function runProjectOperation(
 
 async function runWorkspaceOperation(
   operationName: string,
-  action: (root: string) => Promise<void>,
+  action: (root: string, token: vscode.CancellationToken) => Promise<void>,
   output: vscode.OutputChannel,
 ) {
   const roots = vscode.workspace.workspaceFolders?.map(
@@ -152,6 +152,7 @@ async function runWorkspaceOperation(
   }
 
   output.clear();
+  output.show(true);
 
   await vscode.window.withProgress(
     {
@@ -171,7 +172,7 @@ async function runWorkspaceOperation(
         progress.report({ message: path.basename(root), increment });
         output.appendLine(`\n=== ${path.basename(root)} » ${operationName} ===`);
         try {
-          await action(root);
+          await action(root, token);
         } catch (error: any) {
           output.appendLine(`Error: ${error?.message || error}`);
         }
@@ -243,6 +244,32 @@ async function convertDependenciesToLocal(
   return updated;
 }
 
+function runTestsInTerminal(projects: ProjectInfo[]): void {
+  if (projects.length === 0) {
+    return;
+  }
+
+  const termName =
+    projects.length === 1
+      ? `flutter test — ${projects[0].name}`
+      : `flutter test (${projects.length} modules)`;
+
+  const terminal = vscode.window.createTerminal({
+    name: termName,
+    cwd: projects.length === 1 ? projects[0].path : undefined,
+  });
+  terminal.show();
+
+  for (const project of projects) {
+    if (projects.length > 1) {
+      terminal.sendText(
+        `echo "\\033[1;36m\\n=== ${project.name} ===\\033[0m" && cd "${project.path}"`,
+      );
+    }
+    terminal.sendText(applyFvmProxy("flutter test"));
+  }
+}
+
 async function popNamedStash(
   git: SimpleGit,
   stashMessage: string,
@@ -277,15 +304,9 @@ export function activate(context: vscode.ExtensionContext) {
   const runCacheRepair = async () => {
     await runWorkspaceOperation(
       "Cache Repair",
-      async (root) => {
-        const flutter = await runShellCommand(
-          "flutter pub cache repair",
-          root,
-        );
-        appendCommandOutput(output, "flutter pub cache repair", flutter);
-
-        const dart = await runShellCommand("dart pub cache repair", root);
-        appendCommandOutput(output, "dart pub cache repair", dart);
+      async (root, token) => {
+        await runShellCommand("flutter pub cache repair", root, output, token);
+        await runShellCommand("dart pub cache repair", root, output, token);
       },
       output,
     );
@@ -294,18 +315,9 @@ export function activate(context: vscode.ExtensionContext) {
   const runCacheClean = async () => {
     await runWorkspaceOperation(
       "Cache Clean",
-      async (root) => {
-        const flutter = await runShellCommand(
-          "flutter pub cache clean --force",
-          root,
-        );
-        appendCommandOutput(output, "flutter pub cache clean --force", flutter);
-
-        const dart = await runShellCommand(
-          "dart pub cache clean --force",
-          root,
-        );
-        appendCommandOutput(output, "dart pub cache clean --force", dart);
+      async (root, token) => {
+        await runShellCommand("flutter pub cache clean --force", root, output, token);
+        await runShellCommand("dart pub cache clean --force", root, output, token);
       },
       output,
     );
@@ -315,10 +327,8 @@ export function activate(context: vscode.ExtensionContext) {
     await runProjectOperation(
       "Clean",
       undefined,
-      async (project) => {
-        const clean = await runShellCommand("flutter clean", project.path);
-        appendCommandOutput(output, "flutter clean", clean);
-
+      async (project, token) => {
+        await runShellCommand("flutter clean", project.path, output, token);
         await fs
           .unlink(path.join(project.path, "pubspec.lock"))
           .catch(() => undefined);
@@ -331,9 +341,8 @@ export function activate(context: vscode.ExtensionContext) {
     await runProjectOperation(
       "Pub Get",
       undefined,
-      async (project) => {
-        const result = await runShellCommand("flutter pub get", project.path);
-        appendCommandOutput(output, "flutter pub get", result);
+      async (project, token) => {
+        await runShellCommand("flutter pub get", project.path, output, token);
       },
       output,
     );
@@ -343,12 +352,8 @@ export function activate(context: vscode.ExtensionContext) {
     await runProjectOperation(
       "Pub Upgrade",
       undefined,
-      async (project) => {
-        const result = await runShellCommand(
-          "flutter pub upgrade",
-          project.path,
-        );
-        appendCommandOutput(output, "flutter pub upgrade", result);
+      async (project, token) => {
+        await runShellCommand("flutter pub upgrade", project.path, output, token);
       },
       output,
     );
@@ -358,12 +363,8 @@ export function activate(context: vscode.ExtensionContext) {
     await runProjectOperation(
       "Pub Outdated",
       undefined,
-      async (project) => {
-        const result = await runShellCommand(
-          "flutter pub outdated",
-          project.path,
-        );
-        appendCommandOutput(output, "flutter pub outdated", result);
+      async (project, token) => {
+        await runShellCommand("flutter pub outdated", project.path, output, token);
       },
       output,
     );
@@ -453,17 +454,16 @@ export function activate(context: vscode.ExtensionContext) {
     }
 
     output.clear();
+    output.show(true);
 
-    const steps = [
-      { label: "dart format -l 120 ./lib", command: "dart format -l 120 ./lib" },
-      { label: "dart run build_runner clean", command: "dart run build_runner clean" },
-      {
-        label: "dart run build_runner build --delete-conflicting-outputs",
-        command: "dart run build_runner build --delete-conflicting-outputs",
-      },
-      { label: "flutter analyze", command: "flutter analyze" },
-      { label: "flutter test", command: "flutter test" },
+    const steps: { cmd: string; fatal: boolean }[] = [
+      { cmd: "dart format -l 120 ./lib", fatal: true },
+      { cmd: "dart run build_runner clean", fatal: true },
+      { cmd: "dart run build_runner build --delete-conflicting-outputs", fatal: true },
+      { cmd: "flutter analyze", fatal: false },
     ];
+
+    let allPassed = false;
 
     await vscode.window.withProgress(
       {
@@ -475,19 +475,172 @@ export function activate(context: vscode.ExtensionContext) {
         progress: vscode.Progress<{ message?: string; increment?: number }>,
         token: vscode.CancellationToken,
       ) => {
-        const increment = 100 / steps.length;
+        const increment = 100 / (steps.length + 1);
         for (const step of steps) {
+          if (token.isCancellationRequested) {
+            return;
+          }
+          progress.report({ message: step.cmd, increment });
+          output.appendLine(`\n=== ${project.name} » ${step.cmd} ===`);
+          const result = await runShellCommand(step.cmd, project.path, output, token);
+          if (!result.ok && step.fatal) {
+            output.appendLine("Stopping on first failure.");
+            return;
+          }
+        }
+        allPassed = true;
+        progress.report({ message: "flutter test", increment });
+      },
+    );
+
+    if (allPassed) {
+      runTestsInTerminal([project]);
+    }
+  };
+
+  const runBuildRunnerChecksOnSelected = async () => {
+    const projects = await getAllProjects();
+    if (projects.length === 0) {
+      vscode.window.showWarningMessage("No Flutter modules found.");
+      return;
+    }
+
+    const picks = projects.map((project) => ({
+      label: project.name,
+      description: project.path,
+      project,
+    }));
+
+    const choices = await vscode.window.showQuickPick(picks, {
+      placeHolder: "Select modules to run build_runner, analyze and test",
+      canPickMany: true,
+    });
+
+    if (!choices || choices.length === 0) {
+      return;
+    }
+
+    const selected = choices.map((c: { project: ProjectInfo }) => c.project);
+
+    output.clear();
+    output.show(true);
+
+    const steps: { cmd: string; fatal: boolean }[] = [
+      { cmd: "dart run build_runner build --delete-conflicting-outputs", fatal: true },
+      { cmd: "flutter analyze", fatal: false },
+    ];
+
+    const readyForTest: ProjectInfo[] = [];
+
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `Build Runner + Analyze on ${selected.length} module(s)`,
+        cancellable: true,
+      },
+      async (
+        progress: vscode.Progress<{ message?: string; increment?: number }>,
+        token: vscode.CancellationToken,
+      ) => {
+        const increment = 100 / selected.length;
+        for (const project of selected) {
           if (token.isCancellationRequested) {
             break;
           }
-          progress.report({ message: step.label, increment });
-          output.appendLine(`\n=== ${project.name} » ${step.label} ===`);
-          const result = await runShellCommand(step.command, project.path);
-          appendCommandOutput(output, step.command, result);
-          if (!result.ok) {
-            output.appendLine("Stopping on first failure.");
-            break;
+          progress.report({ message: project.name, increment });
+          output.appendLine(`\n=== ${project.name} ===`);
+          let passed = true;
+          for (const step of steps) {
+            if (token.isCancellationRequested) {
+              passed = false;
+              break;
+            }
+            output.appendLine(`--- ${step.cmd} ---`);
+            const result = await runShellCommand(step.cmd, project.path, output, token);
+            if (!result.ok && step.fatal) {
+              output.appendLine("Stopping on first failure.");
+              passed = false;
+              break;
+            }
           }
+          if (passed) {
+            readyForTest.push(project);
+          }
+        }
+      },
+    );
+
+    if (readyForTest.length > 0) {
+      runTestsInTerminal(readyForTest);
+    }
+  };
+
+  const runFixedSeries = async () => {
+    const projects = await getAllProjects();
+    if (projects.length === 0) {
+      vscode.window.showWarningMessage("No Flutter modules found.");
+      return;
+    }
+
+    const roots = vscode.workspace.workspaceFolders?.map(
+      (folder: vscode.WorkspaceFolder) => folder.uri.fsPath,
+    ) ?? [];
+
+    output.clear();
+    output.show(true);
+
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: "Fixed Series: Clean Cache → Clean → Local Deps → Pub Get",
+        cancellable: true,
+      },
+      async (
+        progress: vscode.Progress<{ message?: string; increment?: number }>,
+        token: vscode.CancellationToken,
+      ) => {
+        progress.report({ message: "Cleaning cache..." });
+        output.appendLine("\n=== Step 1: Clean Cache ===");
+        for (const root of roots) {
+          if (token.isCancellationRequested) {
+            return;
+          }
+          output.appendLine(`\n--- ${path.basename(root)} ---`);
+          await runShellCommand("flutter pub cache clean --force", root, output, token);
+          await runShellCommand("dart pub cache clean --force", root, output, token);
+        }
+
+        progress.report({ message: "Cleaning workspaces..." });
+        output.appendLine("\n=== Step 2: Clean Workspaces ===");
+        for (const project of projects) {
+          if (token.isCancellationRequested) {
+            return;
+          }
+          output.appendLine(`\n--- ${project.name} ---`);
+          await runShellCommand("flutter clean", project.path, output, token);
+          await fs.unlink(path.join(project.path, "pubspec.lock")).catch(() => undefined);
+        }
+
+        progress.report({ message: "Converting deps to local..." });
+        output.appendLine("\n=== Step 3: Convert Dependencies to Local ===");
+        const names = projects.map((p) => p.name);
+        for (const project of projects) {
+          if (token.isCancellationRequested) {
+            return;
+          }
+          output.appendLine(`\n--- ${project.name} ---`);
+          const updated = await convertDependenciesToLocal(project.path, names);
+          output.appendLine(updated ? "Updated pubspec.yaml." : "No changes needed.");
+        }
+
+        progress.report({ message: "Running pub get..." });
+        output.appendLine("\n=== Step 4: Pub Get ===");
+        for (const project of projects) {
+          if (token.isCancellationRequested) {
+            return;
+          }
+          output.appendLine(`\n--- ${project.name} ---`);
+          await runShellCommand("flutter pub get", project.path, output, token);
         }
       },
     );
@@ -506,14 +659,12 @@ export function activate(context: vscode.ExtensionContext) {
     await runProjectOperation(
       `Run: ${command}`,
       undefined,
-      async (project) => {
-        const result = await runShellCommand(command, project.path);
-        appendCommandOutput(output, command, result);
+      async (project, token) => {
+        await runShellCommand(command, project.path, output, token);
       },
       output,
     );
   };
-
 
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -564,6 +715,13 @@ export function activate(context: vscode.ExtensionContext) {
       "multi-module-flutter-tools.runCustomAll",
       runCustomCommandAll,
     ),
+    vscode.commands.registerCommand(
+      "multi-module-flutter-tools.buildRunnerChecks",
+      runBuildRunnerChecksOnSelected,
+    ),
+    vscode.commands.registerCommand(
+      "multi-module-flutter-tools.fixedSeries",
+      runFixedSeries,
+    ),
   );
 }
-

@@ -56,11 +56,8 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
     );
 
     const config = vscode.workspace.getConfiguration("multiModuleFlutter");
-    const buttonSize = Math.max(
-      40,
-      config.get<number>("toolbarButtonSize", 75),
-    );
-    const buttonHeight = `${buttonSize}px`;
+    const buttonSize = Math.max(40, config.get<number>("toolbarButtonSize", 75));
+    const iconSize = `${Math.max(14, Math.min(22, Math.round(buttonSize * 0.22)))}px`;
 
     const nonce = getNonce();
 
@@ -73,141 +70,200 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
         <title>Multi Module Flutter Tools</title>
         <link href="${codiconsUri}" rel="stylesheet" />
         <style>
-          :root {
-            --button-height: ${buttonHeight};
-          }
-          * {
-            --button-height: ${buttonHeight};
-          }
           body {
-            padding: 10px;
+            padding: 0;
+            margin: 0;
             font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
             color: var(--vscode-foreground);
           }
-          h3 {
-            font-size: 1.1em;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            opacity: 0.8;
-          }
+
           .section {
-            margin-bottom: 20px;
+            padding: 8px 0 4px;
           }
-          .toolbar {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(var(--button-height), var(--button-height)));
+          .section + .section {
+            border-top: 1px solid var(--vscode-widget-border, rgba(128,128,128,0.2));
+          }
+
+          .section-header {
+            font-size: 0.72em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            opacity: 0.5;
+            padding: 0 12px 4px;
+          }
+
+          .list-btn {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 5px 12px;
             gap: 10px;
-          }
-          button {
-            background: var(--vscode-button-background);
-            color: var(--vscode-button-foreground);
+            text-align: left;
+            background: transparent;
+            color: var(--vscode-foreground);
             border: none;
+            border-radius: 0;
             cursor: pointer;
+            box-sizing: border-box;
           }
-          button:hover {
-            background: var(--vscode-button-hoverBackground);
+          .list-btn:hover {
+            background: var(--vscode-list-hoverBackground);
           }
-          .icon-btn {
-            width: var(--button-height);
-            height: var(--button-height);
-            padding: 10px 4px;
+          .list-btn:active {
+            background: var(--vscode-list-activeSelectionBackground);
+            color: var(--vscode-list-activeSelectionForeground);
+          }
+
+          .btn-icon {
+            font-size: ${iconSize};
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+            opacity: 0.85;
+          }
+
+          .btn-text {
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border-radius: 6px;
-            gap: 8px;
+            gap: 1px;
+            min-width: 0;
           }
-          .icon-btn .codicon {
-            font-size: 18px;
-            line-height: 1;
-          }
-          .btn-label {
+          .btn-title {
             font-size: 0.9em;
-            text-align: center;
-            line-height: 1;
-            font-weight: 500;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+          .btn-desc {
+            font-size: 0.77em;
+            opacity: 0.55;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
           }
         </style>
       </head>
       <body>
+
         <div class="section">
-          <h3>General</h3>
-          <div class="toolbar">
-            <button class="icon-btn" title="Repair cache" data-command="multi-module-flutter-tools.cacheRepair">
-              <i class="codicon codicon-wrench"></i>
-              <span class="btn-label">Repair Cache</span>
-            </button>
-            <button class="icon-btn" title="Clean cache" data-command="multi-module-flutter-tools.cacheClean">
-              <i class="codicon codicon-trash"></i>
-              <span class="btn-label">Clean Cache</span>
-            </button>
-          </div>
+          <div class="section-header">Cache</div>
+          <button class="list-btn" data-command="multi-module-flutter-tools.cacheRepair">
+            <i class="codicon codicon-wrench btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Repair Cache</span>
+              <span class="btn-desc">flutter &amp; dart pub cache repair</span>
+            </div>
+          </button>
+          <button class="list-btn" data-command="multi-module-flutter-tools.cacheClean">
+            <i class="codicon codicon-trash btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Clean Cache</span>
+              <span class="btn-desc">flutter &amp; dart pub cache clean --force</span>
+            </div>
+          </button>
         </div>
 
         <div class="section">
-          <h3>Workspace</h3>
-          <div class="toolbar">
-            <button class="icon-btn" title="Clean workspaces" data-command="multi-module-flutter-tools.cleanWorkspaces">
-              <i class="codicon codicon-folder"></i>
-              <span class="btn-label">Clean</span>
-            </button>
-            <button class="icon-btn" title="Pub get" data-command="multi-module-flutter-tools.pubGetAll">
-              <i class="codicon codicon-cloud-download"></i>
-              <span class="btn-label">Pub Get</span>
-            </button>
-            <button class="icon-btn" title="Pub upgrade" data-command="multi-module-flutter-tools.pubUpgradeAll">
-              <i class="codicon codicon-arrow-up"></i>
-              <span class="btn-label">Pub Upgrade</span>
-            </button>
-            <button class="icon-btn" title="Pub outdated" data-command="multi-module-flutter-tools.pubOutdatedAll">
-              <i class="codicon codicon-graph"></i>
-              <span class="btn-label">Outdated</span>
-            </button>
-          </div>
-        </div>
-
-
-        <div class="section">
-          <h3>Git</h3>
-          <div class="toolbar">
-            <button class="icon-btn" title="Revert pubspec.yaml" data-command="multi-module-flutter-tools.revertPubspec">
-              <i class="codicon codicon-discard"></i>
-              <span class="btn-label">Revert</span>
-            </button>
-            <button class="icon-btn" title="Pull/update all" data-command="multi-module-flutter-tools.pullUpdateAll">
-              <i class="codicon codicon-repo-sync"></i>
-              <span class="btn-label">Pull</span>
-            </button>
-            <button class="icon-btn" title="Change branch" data-command="multi-module-flutter-tools.changeBranchAll">
-              <i class="codicon codicon-git-branch"></i>
-              <span class="btn-label">Branch</span>
-            </button>
-          </div>
+          <div class="section-header">Packages</div>
+          <button class="list-btn" data-command="multi-module-flutter-tools.cleanWorkspaces">
+            <i class="codicon codicon-clear-all btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Clean All</span>
+              <span class="btn-desc">flutter clean on every module</span>
+            </div>
+          </button>
+          <button class="list-btn" data-command="multi-module-flutter-tools.pubGetAll">
+            <i class="codicon codicon-cloud-download btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Pub Get</span>
+              <span class="btn-desc">flutter pub get on every module</span>
+            </div>
+          </button>
+          <button class="list-btn" data-command="multi-module-flutter-tools.pubUpgradeAll">
+            <i class="codicon codicon-arrow-circle-up btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Pub Upgrade</span>
+              <span class="btn-desc">flutter pub upgrade on every module</span>
+            </div>
+          </button>
+          <button class="list-btn" data-command="multi-module-flutter-tools.pubOutdatedAll">
+            <i class="codicon codicon-tag btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Outdated</span>
+              <span class="btn-desc">List outdated packages in every module</span>
+            </div>
+          </button>
         </div>
 
         <div class="section">
-          <h3>Helpers</h3>
-          <div class="toolbar">
-            <button class="icon-btn" title="Use local dependencies" data-command="multi-module-flutter-tools.depsToLocal">
-              <i class="codicon codicon-file-symlink-file"></i>
-              <span class="btn-label">Local Deps</span>
-            </button>
-            <button class="icon-btn" title="Run format, analyze and tests" data-command="multi-module-flutter-tools.runChecks">
-              <i class="codicon codicon-checklist"></i>
-              <span class="btn-label">Checks</span>
-            </button>
-          </div>
+          <div class="section-header">Git</div>
+          <button class="list-btn" data-command="multi-module-flutter-tools.revertPubspec">
+            <i class="codicon codicon-discard btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Revert pubspec.yaml</span>
+              <span class="btn-desc">Discard pubspec.yaml changes in every module</span>
+            </div>
+          </button>
+          <button class="list-btn" data-command="multi-module-flutter-tools.pullUpdateAll">
+            <i class="codicon codicon-repo-sync btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Pull &amp; Update</span>
+              <span class="btn-desc">Stash, pull --rebase, restore in every module</span>
+            </div>
+          </button>
+          <button class="list-btn" data-command="multi-module-flutter-tools.changeBranchAll">
+            <i class="codicon codicon-git-branch btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Change Branch</span>
+              <span class="btn-desc">Checkout a branch in every module</span>
+            </div>
+          </button>
         </div>
 
         <div class="section">
-          <h3>Custom</h3>
-          <div class="toolbar">
-            <button class="icon-btn" title="Run a custom command" data-command="multi-module-flutter-tools.runCustomAll">
-              <i class="codicon codicon-terminal"></i>
-              <span class="btn-label">Run Cmd</span>
-            </button>
-          </div>
+          <div class="section-header">Analysis</div>
+          <button class="list-btn" data-command="multi-module-flutter-tools.depsToLocal">
+            <i class="codicon codicon-link btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Use Local Deps</span>
+              <span class="btn-desc">Switch deps to local path in pubspec.yaml</span>
+            </div>
+          </button>
+          <button class="list-btn" data-command="multi-module-flutter-tools.runChecks">
+            <i class="codicon codicon-checklist btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Run Checks</span>
+              <span class="btn-desc">Format, build_runner, analyze, test — one module</span>
+            </div>
+          </button>
+          <button class="list-btn" data-command="multi-module-flutter-tools.buildRunnerChecks">
+            <i class="codicon codicon-gear btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Build Runner</span>
+              <span class="btn-desc">Build_runner, analyze, test — selected modules</span>
+            </div>
+          </button>
+        </div>
+
+        <div class="section">
+          <div class="section-header">Run</div>
+          <button class="list-btn" data-command="multi-module-flutter-tools.fixedSeries">
+            <i class="codicon codicon-run-all btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Fixed Series</span>
+              <span class="btn-desc">Clean cache → clean → local deps → pub get</span>
+            </div>
+          </button>
+          <button class="list-btn" data-command="multi-module-flutter-tools.runCustomAll">
+            <i class="codicon codicon-terminal btn-icon"></i>
+            <div class="btn-text">
+              <span class="btn-title">Custom Command</span>
+              <span class="btn-desc">Run any shell command on every module</span>
+            </div>
+          </button>
         </div>
 
         <script nonce="${nonce}">

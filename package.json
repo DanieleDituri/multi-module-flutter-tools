@@ -2,7 +2,7 @@
   "name": "multi-module-flutter-tools",
   "displayName": "Multi Module Flutter Tools",
   "description": "Run Flutter and Dart commands across all Flutter modules in your VS Code workspace.",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "publisher": "DanieleDituri",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -21,19 +21,7 @@
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
-    "onView:multi-module-flutter-view",
-    "onCommand:multi-module-flutter-tools.cacheRepair",
-    "onCommand:multi-module-flutter-tools.cacheClean",
-    "onCommand:multi-module-flutter-tools.cleanWorkspaces",
-    "onCommand:multi-module-flutter-tools.pubGetAll",
-    "onCommand:multi-module-flutter-tools.pubUpgradeAll",
-    "onCommand:multi-module-flutter-tools.pubOutdatedAll",
-    "onCommand:multi-module-flutter-tools.revertPubspec",
-    "onCommand:multi-module-flutter-tools.pullUpdateAll",
-    "onCommand:multi-module-flutter-tools.depsToLocal",
-    "onCommand:multi-module-flutter-tools.changeBranchAll",
-    "onCommand:multi-module-flutter-tools.runChecks",
-    "onCommand:multi-module-flutter-tools.runCustomAll"
+    "onView:multi-module-flutter-view"
   ],
   "contributes": {
     "configuration": {
@@ -142,22 +130,62 @@
         "command": "multi-module-flutter-tools.runCustomAll",
         "title": "Multi-Module Flutter: Run Custom Command (All)",
         "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.buildRunnerChecks",
+        "title": "Multi-Module Flutter: Build Runner + Analyze + Test (Selected)",
+        "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.fixedSeries",
+        "title": "Multi-Module Flutter: Fixed Series (Clean Cache → Clean → Local Deps → Pub Get)",
+        "category": "Flutter (Multi-Module)"
       }
     ],
     "menus": {
       "commandPalette": [
-        { "command": "multi-module-flutter-tools.cacheRepair" },
-        { "command": "multi-module-flutter-tools.cacheClean" },
-        { "command": "multi-module-flutter-tools.cleanWorkspaces" },
-        { "command": "multi-module-flutter-tools.pubGetAll" },
-        { "command": "multi-module-flutter-tools.pubUpgradeAll" },
-        { "command": "multi-module-flutter-tools.pubOutdatedAll" },
-        { "command": "multi-module-flutter-tools.revertPubspec" },
-        { "command": "multi-module-flutter-tools.pullUpdateAll" },
-        { "command": "multi-module-flutter-tools.depsToLocal" },
-        { "command": "multi-module-flutter-tools.changeBranchAll" },
-        { "command": "multi-module-flutter-tools.runChecks" },
-        { "command": "multi-module-flutter-tools.runCustomAll" }
+        {
+          "command": "multi-module-flutter-tools.cacheRepair"
+        },
+        {
+          "command": "multi-module-flutter-tools.cacheClean"
+        },
+        {
+          "command": "multi-module-flutter-tools.cleanWorkspaces"
+        },
+        {
+          "command": "multi-module-flutter-tools.pubGetAll"
+        },
+        {
+          "command": "multi-module-flutter-tools.pubUpgradeAll"
+        },
+        {
+          "command": "multi-module-flutter-tools.pubOutdatedAll"
+        },
+        {
+          "command": "multi-module-flutter-tools.revertPubspec"
+        },
+        {
+          "command": "multi-module-flutter-tools.pullUpdateAll"
+        },
+        {
+          "command": "multi-module-flutter-tools.depsToLocal"
+        },
+        {
+          "command": "multi-module-flutter-tools.changeBranchAll"
+        },
+        {
+          "command": "multi-module-flutter-tools.runChecks"
+        },
+        {
+          "command": "multi-module-flutter-tools.runCustomAll"
+        },
+        {
+          "command": "multi-module-flutter-tools.buildRunnerChecks"
+        },
+        {
+          "command": "multi-module-flutter-tools.fixedSeries"
+        }
       ]
     },
     "viewsContainers": {
@@ -205,6 +233,7 @@
     "esbuild": "^0.25.10",
     "eslint": "^9.36.0",
     "npm-run-all": "^4.1.5",
+    "ovsx": "^0.10.12",
     "typescript": "^5.9.3"
   },
   "dependencies": {
