@@ -87,7 +87,7 @@ Configure under **Settings → Extensions → Multi Module Flutter Tools**:
 | `multiModuleFlutter.scanNested` | boolean | `true` | Scan workspace folders recursively for Flutter modules |
 | `multiModuleFlutter.maxDepth` | number | `2` | Max directory depth to scan (0 = root only) |
 | `multiModuleFlutter.excludeFolders` | array | `[node_modules, .git, ...]` | Folder names to skip during scanning |
-| `multiModuleFlutter.toolbarButtonSize` | number | `75` | Scales the sidebar icon size |
+| `multiModuleFlutter.uiScale` | string | `x-large` | Size of icons and text: `compact` `small` `medium` `large` `x-large` `xx-large` |
 | `multiModuleFlutter.useFvm` | boolean | `false` | Prefix all flutter/dart commands with `fvm` |
 
 ## Requirements
@@ -102,6 +102,11 @@ Configure under **Settings → Extensions → Multi Module Flutter Tools**:
 - Tests always open in a dedicated VS Code terminal so you see Flutter's native coloured output and test summary.
 
 ## Changelog
+
+### 1.1.0
+- Sidebar icons now have a coloured badge background (VS Code button colour) for better visual hierarchy
+- New `uiScale` setting replaces `toolbarButtonSize` — choose from six named sizes (`compact` → `xx-large`, default `x-large`)
+- UI scale updates live when you change the setting
 
 ### 1.0.0
 - First stable release

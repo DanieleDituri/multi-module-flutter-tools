@@ -3,11 +3,9 @@ import * as vscode from "vscode";
 export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "multi-module-flutter-view";
 
-  private _view?: vscode.WebviewView;
-
   constructor(
     private readonly _extensionUri: vscode.Uri,
-    private readonly _output: vscode.OutputChannel,
+    _output: vscode.OutputChannel,
   ) {}
 
   public resolveWebviewView(
@@ -15,8 +13,6 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
     _context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken,
   ) {
-    this._view = webviewView;
-
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [this._extensionUri],
@@ -26,17 +22,13 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
 
     const configChangeListener = vscode.workspace.onDidChangeConfiguration(
       (e: vscode.ConfigurationChangeEvent) => {
-        if (e.affectsConfiguration("multiModuleFlutter.toolbarButtonSize")) {
-          webviewView.webview.html = this._getHtmlForWebview(
-            webviewView.webview,
-          );
+        if (e.affectsConfiguration("multiModuleFlutter.uiScale")) {
+          webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         }
       },
     );
 
-    webviewView.onDidDispose(() => {
-      configChangeListener.dispose();
-    });
+    webviewView.onDidDispose(() => configChangeListener.dispose());
 
     webviewView.webview.onDidReceiveMessage(async (data: { type: string; command?: string }) => {
       if (data.type === "runCommand" && data.command) {
@@ -54,10 +46,14 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
         "codicon.css",
       ),
     );
-
-    const config = vscode.workspace.getConfiguration("multiModuleFlutter");
-    const buttonSize = Math.max(40, config.get<number>("toolbarButtonSize", 75));
-    const iconSize = `${Math.max(14, Math.min(22, Math.round(buttonSize * 0.22)))}px`;
+    const scale = uiScaleMultiplier(
+      vscode.workspace.getConfiguration("multiModuleFlutter").get<string>("uiScale", "medium"),
+    );
+    const iconSize = `${Math.round(17 * scale)}px`;
+    const iconBoxSize = `${Math.round(30 * scale)}px`;
+    const sectionHeaderSize = `${+(0.72 * scale).toFixed(3)}em`;
+    const btnTitleSize = `${+(0.9 * scale).toFixed(3)}em`;
+    const btnDescSize = `${+(0.77 * scale).toFixed(3)}em`;
 
     const nonce = getNonce();
 
@@ -74,7 +70,6 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
             padding: 0;
             margin: 0;
             font-family: var(--vscode-font-family);
-            font-size: var(--vscode-font-size);
             color: var(--vscode-foreground);
           }
 
@@ -86,7 +81,7 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
           }
 
           .section-header {
-            font-size: 0.72em;
+            font-size: ${sectionHeaderSize};
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.08em;
@@ -117,11 +112,19 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
           }
 
           .btn-icon {
-            font-size: ${iconSize};
-            width: 20px;
-            text-align: center;
+            width: ${iconBoxSize};
+            height: ${iconBoxSize};
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
-            opacity: 0.85;
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+            border-radius: 6px;
+          }
+          .btn-icon .codicon {
+            font-size: ${iconSize};
+            line-height: 1;
           }
 
           .btn-text {
@@ -131,14 +134,14 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
             min-width: 0;
           }
           .btn-title {
-            font-size: 0.9em;
+            font-size: ${btnTitleSize};
             font-weight: 600;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
           }
           .btn-desc {
-            font-size: 0.77em;
+            font-size: ${btnDescSize};
             opacity: 0.55;
             white-space: nowrap;
             overflow: hidden;
@@ -151,14 +154,14 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
         <div class="section">
           <div class="section-header">Cache</div>
           <button class="list-btn" data-command="multi-module-flutter-tools.cacheRepair">
-            <i class="codicon codicon-wrench btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-wrench"></i></span>
             <div class="btn-text">
               <span class="btn-title">Repair Cache</span>
               <span class="btn-desc">flutter &amp; dart pub cache repair</span>
             </div>
           </button>
           <button class="list-btn" data-command="multi-module-flutter-tools.cacheClean">
-            <i class="codicon codicon-trash btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-trash"></i></span>
             <div class="btn-text">
               <span class="btn-title">Clean Cache</span>
               <span class="btn-desc">flutter &amp; dart pub cache clean --force</span>
@@ -169,28 +172,28 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
         <div class="section">
           <div class="section-header">Packages</div>
           <button class="list-btn" data-command="multi-module-flutter-tools.cleanWorkspaces">
-            <i class="codicon codicon-clear-all btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-clear-all"></i></span>
             <div class="btn-text">
               <span class="btn-title">Clean All</span>
               <span class="btn-desc">flutter clean on every module</span>
             </div>
           </button>
           <button class="list-btn" data-command="multi-module-flutter-tools.pubGetAll">
-            <i class="codicon codicon-cloud-download btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-cloud-download"></i></span>
             <div class="btn-text">
               <span class="btn-title">Pub Get</span>
               <span class="btn-desc">flutter pub get on every module</span>
             </div>
           </button>
           <button class="list-btn" data-command="multi-module-flutter-tools.pubUpgradeAll">
-            <i class="codicon codicon-arrow-circle-up btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-arrow-circle-up"></i></span>
             <div class="btn-text">
               <span class="btn-title">Pub Upgrade</span>
               <span class="btn-desc">flutter pub upgrade on every module</span>
             </div>
           </button>
           <button class="list-btn" data-command="multi-module-flutter-tools.pubOutdatedAll">
-            <i class="codicon codicon-tag btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-tag"></i></span>
             <div class="btn-text">
               <span class="btn-title">Outdated</span>
               <span class="btn-desc">List outdated packages in every module</span>
@@ -201,21 +204,21 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
         <div class="section">
           <div class="section-header">Git</div>
           <button class="list-btn" data-command="multi-module-flutter-tools.revertPubspec">
-            <i class="codicon codicon-discard btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-discard"></i></span>
             <div class="btn-text">
               <span class="btn-title">Revert pubspec.yaml</span>
               <span class="btn-desc">Discard pubspec.yaml changes in every module</span>
             </div>
           </button>
           <button class="list-btn" data-command="multi-module-flutter-tools.pullUpdateAll">
-            <i class="codicon codicon-repo-sync btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-repo-sync"></i></span>
             <div class="btn-text">
               <span class="btn-title">Pull &amp; Update</span>
               <span class="btn-desc">Stash, pull --rebase, restore in every module</span>
             </div>
           </button>
           <button class="list-btn" data-command="multi-module-flutter-tools.changeBranchAll">
-            <i class="codicon codicon-git-branch btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-git-branch"></i></span>
             <div class="btn-text">
               <span class="btn-title">Change Branch</span>
               <span class="btn-desc">Checkout a branch in every module</span>
@@ -226,21 +229,21 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
         <div class="section">
           <div class="section-header">Analysis</div>
           <button class="list-btn" data-command="multi-module-flutter-tools.depsToLocal">
-            <i class="codicon codicon-link btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-link"></i></span>
             <div class="btn-text">
               <span class="btn-title">Use Local Deps</span>
               <span class="btn-desc">Switch deps to local path in pubspec.yaml</span>
             </div>
           </button>
           <button class="list-btn" data-command="multi-module-flutter-tools.runChecks">
-            <i class="codicon codicon-checklist btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-checklist"></i></span>
             <div class="btn-text">
               <span class="btn-title">Run Checks</span>
               <span class="btn-desc">Format, build_runner, analyze, test — one module</span>
             </div>
           </button>
           <button class="list-btn" data-command="multi-module-flutter-tools.buildRunnerChecks">
-            <i class="codicon codicon-gear btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-gear"></i></span>
             <div class="btn-text">
               <span class="btn-title">Build Runner</span>
               <span class="btn-desc">Build_runner, analyze, test — selected modules</span>
@@ -251,14 +254,14 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
         <div class="section">
           <div class="section-header">Run</div>
           <button class="list-btn" data-command="multi-module-flutter-tools.fixedSeries">
-            <i class="codicon codicon-run-all btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-run-all"></i></span>
             <div class="btn-text">
               <span class="btn-title">Fixed Series</span>
               <span class="btn-desc">Clean cache → clean → local deps → pub get</span>
             </div>
           </button>
           <button class="list-btn" data-command="multi-module-flutter-tools.runCustomAll">
-            <i class="codicon codicon-terminal btn-icon"></i>
+            <span class="btn-icon"><i class="codicon codicon-terminal"></i></span>
             <div class="btn-text">
               <span class="btn-title">Custom Command</span>
               <span class="btn-desc">Run any shell command on every module</span>
@@ -280,6 +283,18 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
         </script>
       </body>
       </html>`;
+  }
+}
+
+function uiScaleMultiplier(scale: string): number {
+  switch (scale) {
+    case "compact": return 0.8;
+    case "small": return 0.9;
+    case "medium": return 1;
+    case "large": return 1.1;
+    case "x-large": return 1.25;
+    case "xx-large": return 1.5;
+    default: return 1.25;
   }
 }
 

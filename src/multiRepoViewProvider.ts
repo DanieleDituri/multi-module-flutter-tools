@@ -3,11 +3,9 @@ import * as vscode from "vscode";
 export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = "multi-module-flutter-view";
 
-  private _view?: vscode.WebviewView;
-
   constructor(
     private readonly _extensionUri: vscode.Uri,
-    private readonly _output: vscode.OutputChannel,
+    _output: vscode.OutputChannel,
   ) {}
 
   public resolveWebviewView(
@@ -15,8 +13,6 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
     _context: vscode.WebviewViewResolveContext,
     _token: vscode.CancellationToken,
   ) {
-    this._view = webviewView;
-
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [this._extensionUri],
@@ -26,17 +22,13 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
 
     const configChangeListener = vscode.workspace.onDidChangeConfiguration(
       (e: vscode.ConfigurationChangeEvent) => {
-        if (e.affectsConfiguration("multiModuleFlutter.toolbarButtonSize")) {
-          webviewView.webview.html = this._getHtmlForWebview(
-            webviewView.webview,
-          );
+        if (e.affectsConfiguration("multiModuleFlutter.uiScale")) {
+          webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
         }
       },
     );
 
-    webviewView.onDidDispose(() => {
-      configChangeListener.dispose();
-    });
+    webviewView.onDidDispose(() => configChangeListener.dispose());
 
     webviewView.webview.onDidReceiveMessage(async (data: { type: string; command?: string }) => {
       if (data.type === "runCommand" && data.command) {
@@ -55,12 +47,13 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
       ),
     );
 
-    const config = vscode.workspace.getConfiguration("multiModuleFlutter");
-    const buttonSize = Math.max(
-      40,
-      config.get<number>("toolbarButtonSize", 75),
+    const scale = uiScaleMultiplier(
+      vscode.workspace.getConfiguration("multiModuleFlutter").get<string>("uiScale", "medium"),
     );
-    const buttonHeight = `${buttonSize}px`;
+    const buttonHeight = `${Math.round(75 * scale)}px`;
+    const iconSize = `${Math.round(24 * scale)}px`;
+    const h3Size = `${+(1.1 * scale).toFixed(3)}em`;
+    const btnLabelSize = `${+(0.9 * scale).toFixed(3)}em`;
 
     const nonce = getNonce();
 
@@ -85,7 +78,7 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
             color: var(--vscode-foreground);
           }
           h3 {
-            font-size: 1.1em;
+            font-size: ${h3Size};
             margin-bottom: 8px;
             text-transform: uppercase;
             opacity: 0.8;
@@ -119,11 +112,11 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
             gap: 8px;
           }
           .icon-btn .codicon {
-            font-size: 24px;
+            font-size: ${iconSize};
             line-height: 1;
           }
           .btn-label {
-            font-size: 0.9em;
+            font-size: ${btnLabelSize};
             text-align: center;
             line-height: 1;
             font-weight: 500;
@@ -223,6 +216,18 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
         </script>
       </body>
       </html>`;
+  }
+}
+
+function uiScaleMultiplier(scale: string): number {
+  switch (scale) {
+    case "compact": return 0.8;
+    case "small": return 0.9;
+    case "medium": return 1;
+    case "large": return 1.1;
+    case "x-large": return 1.25;
+    case "xx-large": return 1.5;
+    default: return 1.25;
   }
 }
 

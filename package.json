@@ -2,7 +2,7 @@
   "name": "multi-module-flutter-tools",
   "displayName": "Multi Module Flutter Tools",
   "description": "Run Flutter and Dart commands across all Flutter modules in your VS Code workspace.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "publisher": "DanieleDituri",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -24,9 +24,6 @@
     "url": "https://github.com/DanieleDituri/multi-module-flutter-tools.git"
   },
   "main": "./dist/extension.js",
-  "activationEvents": [
-    "onView:multi-module-flutter-view"
-  ],
   "contributes": {
     "configuration": {
       "title": "Multi Module Flutter Tools",
@@ -60,12 +57,19 @@
           ],
           "description": "Folder names to exclude during project scanning."
         },
-        "multiModuleFlutter.toolbarButtonSize": {
-          "type": "number",
-          "default": 75,
-          "minimum": 40,
-          "maximum": 150,
-          "description": "Height of the toolbar buttons in pixels (40-150). Default is 75px."
+        "multiModuleFlutter.uiScale": {
+          "type": "string",
+          "enum": ["compact", "small", "medium", "large", "x-large", "xx-large"],
+          "enumDescriptions": [
+            "×0.80 — very compact",
+            "×0.90 — slightly smaller",
+            "×1.00 — default VS Code size",
+            "×1.10 — slightly larger",
+            "×1.25 — comfortable",
+            "×1.50 — extra large"
+          ],
+          "default": "x-large",
+          "description": "Size of icons and text in the toolbar panels."
         },
         "multiModuleFlutter.useFvm": {
           "type": "boolean",
