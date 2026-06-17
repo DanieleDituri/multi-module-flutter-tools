@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+- New **Setup Local (rps)** command in Analysis section: runs `rps setup local` in every module using the [rps](https://pub.dev/packages/rps) Dart script runner
+- If `rps` is not installed, the command warns the user and offers to install it via `dart pub global activate rps`
+
 ## 1.1.0
 - Sidebar icons now have a coloured badge background (VS Code button colour) for better visual hierarchy
 - New `uiScale` setting replaces `toolbarButtonSize` — six named sizes: `compact` `small` `medium` `large` `x-large` (default) `xx-large`

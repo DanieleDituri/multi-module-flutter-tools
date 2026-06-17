@@ -646,6 +646,62 @@ export function activate(context: vscode.ExtensionContext) {
     );
   };
 
+  const runSetupLocalRps = async () => {
+    const projects = await getAllProjects();
+    if (projects.length === 0) {
+      vscode.window.showWarningMessage("No Flutter modules found.");
+      return;
+    }
+
+    const roots = vscode.workspace.workspaceFolders?.map(
+      (folder: vscode.WorkspaceFolder) => folder.uri.fsPath,
+    ) ?? [];
+
+    output.clear();
+    output.show(true);
+
+    const checkRoot = roots[0] ?? projects[0].path;
+    const rpsCheck = await runShellCommand("which rps", checkRoot, output);
+    if (!rpsCheck.ok) {
+      const action = await vscode.window.showWarningMessage(
+        "rps is not installed. Run 'dart pub global activate rps' to install it, then make sure ~/.pub-cache/bin is in your PATH.",
+        "Install now",
+        "Cancel",
+      );
+      if (action !== "Install now") {
+        return;
+      }
+      const activated = await runShellCommand("dart pub global activate rps", checkRoot, output);
+      if (!activated.ok) {
+        vscode.window.showErrorMessage("Failed to activate rps. Check the output panel for details.");
+        return;
+      }
+      vscode.window.showInformationMessage("rps activated. Add ~/.pub-cache/bin to your PATH if rps is not found in future runs.");
+    }
+
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: "Setup Local (rps)",
+        cancellable: true,
+      },
+      async (
+        progress: vscode.Progress<{ message?: string; increment?: number }>,
+        token: vscode.CancellationToken,
+      ) => {
+        progress.report({ message: "Running rps setup local..." });
+        output.appendLine("\n=== rps setup local ===");
+        for (const project of projects) {
+          if (token.isCancellationRequested) {
+            return;
+          }
+          output.appendLine(`\n--- ${project.name} ---`);
+          await runShellCommand("rps setup local", project.path, output, token);
+        }
+      },
+    );
+  };
+
   const runCustomCommandAll = async () => {
     const command = await vscode.window.showInputBox({
       title: "Command to run",
@@ -722,6 +778,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(
       "multi-module-flutter-tools.fixedSeries",
       runFixedSeries,
+    ),
+    vscode.commands.registerCommand(
+      "multi-module-flutter-tools.setupLocalRps",
+      runSetupLocalRps,
     ),
   );
 }

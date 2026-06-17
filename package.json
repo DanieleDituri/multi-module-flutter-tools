@@ -2,7 +2,7 @@
   "name": "multi-module-flutter-tools",
   "displayName": "Multi Module Flutter Tools",
   "description": "Run Flutter and Dart commands across all Flutter modules in your VS Code workspace.",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "publisher": "DanieleDituri",
   "license": "MIT",
   "icon": "images/icon.png",
@@ -148,6 +148,11 @@
         "command": "multi-module-flutter-tools.fixedSeries",
         "title": "Multi-Module Flutter: Fixed Series (Clean Cache → Clean → Local Deps → Pub Get)",
         "category": "Flutter (Multi-Module)"
+      },
+      {
+        "command": "multi-module-flutter-tools.setupLocalRps",
+        "title": "Multi-Module Flutter: Setup Local (rps)",
+        "category": "Flutter (Multi-Module)"
       }
     ],
     "menus": {
@@ -193,6 +198,9 @@
         },
         {
           "command": "multi-module-flutter-tools.fixedSeries"
+        },
+        {
+          "command": "multi-module-flutter-tools.setupLocalRps"
         }
       ]
     },

@@ -235,6 +235,13 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
               <span class="btn-desc">Switch deps to local path in pubspec.yaml</span>
             </div>
           </button>
+          <button class="list-btn" data-command="multi-module-flutter-tools.setupLocalRps">
+            <span class="btn-icon"><i class="codicon codicon-package"></i></span>
+            <div class="btn-text">
+              <span class="btn-title">Setup Local (rps)</span>
+              <span class="btn-desc">rps setup local in every module</span>
+            </div>
+          </button>
           <button class="list-btn" data-command="multi-module-flutter-tools.runChecks">
             <span class="btn-icon"><i class="codicon codicon-checklist"></i></span>
             <div class="btn-text">

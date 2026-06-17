@@ -7,7 +7,7 @@ Run Flutter and Dart maintenance commands across all Flutter modules in your VS 
 - **Cache tools**: repair or force-clean Flutter/Dart pub caches
 - **Package tools**: clean, pub get/upgrade, outdated checks across all modules
 - **Git helpers**: revert pubspec.yaml, pull with rebase, change branch across all modules
-- **Local dependencies**: convert dependencies to local `path:` references in pubspec.yaml
+- **Local dependencies**: convert dependencies to local `path:` references in pubspec.yaml, or use `rps setup local` via the [rps](https://pub.dev/packages/rps) script runner
 - **Checks**: format, build_runner, analyze and test on a single module — non-build failures (analyze warnings) are reported but don't block tests
 - **Build Runner**: build_runner + analyze + test on multiple selected modules — opens a dedicated terminal for test output
 - **Fixed Series**: run the full setup sequence (clean cache → clean → local deps → pub get) in one click
@@ -50,6 +50,7 @@ The sidebar is organised into five sections:
 | Button | What it does |
 |--------|-------------|
 | **Use Local Deps** | Converts matching dependencies to `path: ../<package>` in every module's pubspec.yaml |
+| **Setup Local (rps)** | Runs `rps setup local` in every module using the [rps](https://pub.dev/packages/rps) script runner — prompts to install rps if not found |
 | **Run Checks** | `dart format` → `build_runner clean` → `build_runner build` → `flutter analyze` on a single selected module, then opens a terminal for `flutter test` |
 | **Build Runner** | `build_runner build` → `flutter analyze` on multiple selected modules, then opens a single terminal running `flutter test` for every module that passed |
 
@@ -72,6 +73,7 @@ All actions are also available from the Command Palette (`Cmd+Shift+P`):
 - `Multi-Module Flutter: Revert pubspec.yaml (All)`
 - `Multi-Module Flutter: Pull/Update (All)`
 - `Multi-Module Flutter: Use Local Dependencies`
+- `Multi-Module Flutter: Setup Local (rps)`
 - `Multi-Module Flutter: Change Branch (All)`
 - `Multi-Module Flutter: Run Checks`
 - `Multi-Module Flutter: Build Runner + Analyze + Test (Selected)`
@@ -102,6 +104,10 @@ Configure under **Settings → Extensions → Multi Module Flutter Tools**:
 - Tests always open in a dedicated VS Code terminal so you see Flutter's native coloured output and test summary.
 
 ## Changelog
+
+### 1.2.0
+- New **Setup Local (rps)** command in Analysis section: runs `rps setup local` in every module using the [rps](https://pub.dev/packages/rps) Dart script runner
+- If `rps` is not installed, the command warns the user and offers to install it via `dart pub global activate rps`
 
 ### 1.1.0
 - Sidebar icons now have a coloured badge background (VS Code button colour) for better visual hierarchy
