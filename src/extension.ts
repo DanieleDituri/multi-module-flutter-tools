@@ -5,8 +5,11 @@ import { spawn } from "node:child_process";
 import { simpleGit, SimpleGit } from "simple-git";
 import { getAllFlutterProjects } from "./repoDiscovery";
 import { MultiModuleViewProvider } from "./multiModuleViewProvider.js";
+import { NotificationManager } from "./notificationManager.js";
+import { SUCCESS_MESSAGES, ERROR_MESSAGES, COMMAND_TITLES, INFO_MESSAGES } from "./constants.js";
+import { ProjectInfo, OperationStats } from "./types.js";
 
-export type ProjectInfo = { name: string; path: string };
+export type { ProjectInfo };
 
 function createOutput(): vscode.OutputChannel {
   return vscode.window.createOutputChannel("Multi Module Flutter Tools");
@@ -109,12 +112,18 @@ async function runProjectOperation(
   projects: ProjectInfo[] | undefined,
   action: (project: ProjectInfo, token: vscode.CancellationToken) => Promise<void>,
   output: vscode.OutputChannel,
-) {
+): Promise<OperationStats> {
   const projectList = projects ?? (await getAllProjects());
+  const errors: Array<{ module: string; message: string }> = [];
+  const notificationManager = new NotificationManager();
+
   if (projectList.length === 0) {
-    vscode.window.showWarningMessage("No Flutter modules found.");
+    notificationManager.notifyWarning({
+      title: operationName,
+      message: "No Flutter modules found.",
+    });
     output.appendLine("⚠️  No Flutter modules found");
-    return;
+    return { successCount: 0, failureCount: 0, totalCount: 0, durationMs: 0, cancelled: false, errors };
   }
 
   output.clear();
@@ -122,6 +131,7 @@ async function runProjectOperation(
 
   let successCount = 0;
   let errorCount = 0;
+  let cancelled = false;
   const startTime = Date.now();
 
   await vscode.window.withProgress(
@@ -138,6 +148,7 @@ async function runProjectOperation(
       for (const project of projectList) {
         if (token.isCancellationRequested) {
           output.appendLine("\n⚠️  Operation cancelled by user");
+          cancelled = true;
           break;
         }
         progress.report({ message: project.name, increment });
@@ -147,39 +158,51 @@ async function runProjectOperation(
           successCount++;
         } catch (error: any) {
           errorCount++;
-          output.appendLine(`❌ Error: ${error?.message || error}`);
+          const errorMsg = error?.message || error?.toString() || "Unknown error";
+          output.appendLine(`❌ Error: ${errorMsg}`);
+          errors.push({ module: project.name, message: errorMsg });
         }
       }
     },
   );
 
-  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+  const durationMs = Date.now() - startTime;
+  const duration = (durationMs / 1000).toFixed(1);
   const summary = `${successCount}/${projectList.length} succeeded, ${errorCount} failed in ${duration}s`;
 
-  if (errorCount === 0) {
-    output.appendLine(`\n✅ ${operationName} completed successfully - ${summary}`);
-    vscode.window.showInformationMessage(`${operationName} completed on all ${projectList.length} module(s)`);
-  } else if (successCount > 0) {
-    output.appendLine(`\n⚠️  ${operationName} partially completed - ${summary}`);
-    vscode.window.showWarningMessage(`${operationName} failed on ${errorCount} module(s)`);
-  } else {
-    output.appendLine(`\n❌ ${operationName} failed on all modules - ${summary}`);
-    vscode.window.showErrorMessage(`${operationName} failed on all modules`);
-  }
+  output.appendLine(`\n✅ ${operationName} completed - ${summary}`);
+
+  const stats: OperationStats = {
+    successCount,
+    failureCount: errorCount,
+    totalCount: projectList.length,
+    durationMs,
+    cancelled,
+    errors,
+  };
+
+  notificationManager.notifyCompletion(operationName, stats);
+  return stats;
 }
 
 async function runWorkspaceOperation(
   operationName: string,
   action: (root: string, token: vscode.CancellationToken) => Promise<void>,
   output: vscode.OutputChannel,
-) {
+): Promise<OperationStats> {
   const roots = vscode.workspace.workspaceFolders?.map(
     (folder: vscode.WorkspaceFolder) => folder.uri.fsPath,
   );
+  const errors: Array<{ module: string; message: string }> = [];
+  const notificationManager = new NotificationManager();
+
   if (!roots || roots.length === 0) {
-    vscode.window.showWarningMessage("No workspace folders found.");
+    notificationManager.notifyWarning({
+      title: operationName,
+      message: "No workspace folders found.",
+    });
     output.appendLine("⚠️  No workspace folders found");
-    return;
+    return { successCount: 0, failureCount: 0, totalCount: 0, durationMs: 0, cancelled: false, errors };
   }
 
   output.clear();
@@ -187,6 +210,7 @@ async function runWorkspaceOperation(
 
   let successCount = 0;
   let errorCount = 0;
+  let cancelled = false;
   const startTime = Date.now();
 
   await vscode.window.withProgress(
@@ -203,6 +227,7 @@ async function runWorkspaceOperation(
       for (const root of roots) {
         if (token.isCancellationRequested) {
           output.appendLine("\n⚠️  Operation cancelled by user");
+          cancelled = true;
           break;
         }
         progress.report({ message: path.basename(root), increment });
@@ -212,25 +237,31 @@ async function runWorkspaceOperation(
           successCount++;
         } catch (error: any) {
           errorCount++;
-          output.appendLine(`❌ Error: ${error?.message || error}`);
+          const errorMsg = error?.message || error?.toString() || "Unknown error";
+          output.appendLine(`❌ Error: ${errorMsg}`);
+          errors.push({ module: path.basename(root), message: errorMsg });
         }
       }
     },
   );
 
-  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+  const durationMs = Date.now() - startTime;
+  const duration = (durationMs / 1000).toFixed(1);
   const summary = `${successCount}/${roots.length} succeeded, ${errorCount} failed in ${duration}s`;
 
-  if (errorCount === 0) {
-    output.appendLine(`\n✅ ${operationName} completed successfully - ${summary}`);
-    vscode.window.showInformationMessage(`${operationName} completed on all ${roots.length} workspace(s)`);
-  } else if (successCount > 0) {
-    output.appendLine(`\n⚠️  ${operationName} partially completed - ${summary}`);
-    vscode.window.showWarningMessage(`${operationName} failed on ${errorCount} workspace(s)`);
-  } else {
-    output.appendLine(`\n❌ ${operationName} failed on all workspaces - ${summary}`);
-    vscode.window.showErrorMessage(`${operationName} failed on all workspaces`);
-  }
+  output.appendLine(`\n✅ ${operationName} completed - ${summary}`);
+
+  const stats: OperationStats = {
+    successCount,
+    failureCount: errorCount,
+    totalCount: roots.length,
+    durationMs,
+    cancelled,
+    errors,
+  };
+
+  notificationManager.notifyCompletion(operationName, stats);
+  return stats;
 }
 
 function isActivePathLine(line: string): boolean {
