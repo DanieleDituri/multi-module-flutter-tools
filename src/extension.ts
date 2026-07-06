@@ -37,7 +37,7 @@ function runShellCommand(
   cwd: string | undefined,
   output: vscode.OutputChannel,
   token?: vscode.CancellationToken,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; message?: string }> {
   const proxied = applyFvmProxy(command);
   output.appendLine(`$ ${proxied}`);
 
@@ -46,7 +46,8 @@ function runShellCommand(
 
     const cancelDisposable = token?.onCancellationRequested(() => {
       child.kill();
-      resolve({ ok: false });
+      output.appendLine("⚠️  Command cancelled by user");
+      resolve({ ok: false, message: "cancelled" });
     });
 
     child.stdout.on("data", (chunk: Buffer) => {
@@ -59,13 +60,20 @@ function runShellCommand(
 
     child.on("close", (code) => {
       cancelDisposable?.dispose();
-      resolve({ ok: code === 0 });
+      if (code === 0) {
+        output.appendLine("✅ Command executed successfully");
+        resolve({ ok: true, message: "success" });
+      } else {
+        output.appendLine(`❌ Command exited with code ${code}`);
+        resolve({ ok: false, message: `exit_code_${code}` });
+      }
     });
 
     child.on("error", (err) => {
       cancelDisposable?.dispose();
-      output.appendLine(`Error: ${err.message}`);
-      resolve({ ok: false });
+      const errorMsg = `Command execution error: ${err.message}`;
+      output.appendLine(`❌ ${errorMsg}`);
+      resolve({ ok: false, message: err.message });
     });
   });
 }
@@ -105,11 +113,16 @@ async function runProjectOperation(
   const projectList = projects ?? (await getAllProjects());
   if (projectList.length === 0) {
     vscode.window.showWarningMessage("No Flutter modules found.");
+    output.appendLine("⚠️  No Flutter modules found");
     return;
   }
 
   output.clear();
   output.show(true);
+
+  let successCount = 0;
+  let errorCount = 0;
+  const startTime = Date.now();
 
   await vscode.window.withProgress(
     {
@@ -124,18 +137,35 @@ async function runProjectOperation(
       const increment = 100 / projectList.length;
       for (const project of projectList) {
         if (token.isCancellationRequested) {
+          output.appendLine("\n⚠️  Operation cancelled by user");
           break;
         }
         progress.report({ message: project.name, increment });
         output.appendLine(`\n=== ${project.name} » ${operationName} ===`);
         try {
           await action(project, token);
+          successCount++;
         } catch (error: any) {
-          output.appendLine(`Error: ${error?.message || error}`);
+          errorCount++;
+          output.appendLine(`❌ Error: ${error?.message || error}`);
         }
       }
     },
   );
+
+  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+  const summary = `${successCount}/${projectList.length} succeeded, ${errorCount} failed in ${duration}s`;
+
+  if (errorCount === 0) {
+    output.appendLine(`\n✅ ${operationName} completed successfully - ${summary}`);
+    vscode.window.showInformationMessage(`${operationName} completed on all ${projectList.length} module(s)`);
+  } else if (successCount > 0) {
+    output.appendLine(`\n⚠️  ${operationName} partially completed - ${summary}`);
+    vscode.window.showWarningMessage(`${operationName} failed on ${errorCount} module(s)`);
+  } else {
+    output.appendLine(`\n❌ ${operationName} failed on all modules - ${summary}`);
+    vscode.window.showErrorMessage(`${operationName} failed on all modules`);
+  }
 }
 
 async function runWorkspaceOperation(
@@ -148,11 +178,16 @@ async function runWorkspaceOperation(
   );
   if (!roots || roots.length === 0) {
     vscode.window.showWarningMessage("No workspace folders found.");
+    output.appendLine("⚠️  No workspace folders found");
     return;
   }
 
   output.clear();
   output.show(true);
+
+  let successCount = 0;
+  let errorCount = 0;
+  const startTime = Date.now();
 
   await vscode.window.withProgress(
     {
@@ -167,18 +202,35 @@ async function runWorkspaceOperation(
       const increment = 100 / roots.length;
       for (const root of roots) {
         if (token.isCancellationRequested) {
+          output.appendLine("\n⚠️  Operation cancelled by user");
           break;
         }
         progress.report({ message: path.basename(root), increment });
         output.appendLine(`\n=== ${path.basename(root)} » ${operationName} ===`);
         try {
           await action(root, token);
+          successCount++;
         } catch (error: any) {
-          output.appendLine(`Error: ${error?.message || error}`);
+          errorCount++;
+          output.appendLine(`❌ Error: ${error?.message || error}`);
         }
       }
     },
   );
+
+  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+  const summary = `${successCount}/${roots.length} succeeded, ${errorCount} failed in ${duration}s`;
+
+  if (errorCount === 0) {
+    output.appendLine(`\n✅ ${operationName} completed successfully - ${summary}`);
+    vscode.window.showInformationMessage(`${operationName} completed on all ${roots.length} workspace(s)`);
+  } else if (successCount > 0) {
+    output.appendLine(`\n⚠️  ${operationName} partially completed - ${summary}`);
+    vscode.window.showWarningMessage(`${operationName} failed on ${errorCount} workspace(s)`);
+  } else {
+    output.appendLine(`\n❌ ${operationName} failed on all workspaces - ${summary}`);
+    vscode.window.showErrorMessage(`${operationName} failed on all workspaces`);
+  }
 }
 
 function isActivePathLine(line: string): boolean {
@@ -199,7 +251,11 @@ async function convertDependenciesToLocal(
 
   try {
     contents = await fs.readFile(filePath, "utf8");
-  } catch {
+  } catch (error: any) {
+    const errorMsg = error?.code === "ENOENT"
+      ? `pubspec.yaml not found in ${projectPath}`
+      : `Failed to read pubspec.yaml: ${error?.message}`;
+    console.error(errorMsg);
     return false;
   }
 
@@ -238,7 +294,13 @@ async function convertDependenciesToLocal(
   }
 
   if (updated) {
-    await fs.writeFile(filePath, updatedLines.join("\n"), "utf8");
+    try {
+      await fs.writeFile(filePath, updatedLines.join("\n"), "utf8");
+      console.log(`✅ Dependencies converted to local in ${projectPath}`);
+    } catch (error: any) {
+      console.error(`❌ Failed to write pubspec.yaml: ${error?.message}`);
+      return false;
+    }
   }
 
   return updated;
@@ -274,25 +336,34 @@ async function popNamedStash(
   git: SimpleGit,
   stashMessage: string,
 ): Promise<boolean> {
-  const list = await git.raw(["stash", "list"]);
-  const lines = list.split(/\r?\n/).filter(Boolean);
-  const match = lines.find((line: string) => line.includes(stashMessage));
-  if (!match) {
+  try {
+    const list = await git.raw(["stash", "list"]);
+    const lines = list.split(/\r?\n/).filter(Boolean);
+    const match = lines.find((line: string) => line.includes(stashMessage));
+    if (!match) {
+      console.warn(`⚠️  Stash with message "${stashMessage}" not found`);
+      return false;
+    }
+
+    const refMatch = match.match(/stash@{(\d+)}/);
+    if (!refMatch) {
+      console.error(`❌ Failed to parse stash reference from: ${match}`);
+      return false;
+    }
+
+    await git.raw(["stash", "pop", "--index", `stash@{${refMatch[1]}}`]);
+    console.log(`✅ Stash restored: ${stashMessage}`);
+    return true;
+  } catch (error: any) {
+    console.error(`❌ Failed to pop stash: ${error?.message}`);
     return false;
   }
-
-  const refMatch = match.match(/stash@{(\d+)}/);
-  if (!refMatch) {
-    return false;
-  }
-
-  await git.raw(["stash", "pop", "--index", `stash@{${refMatch[1]}}`]);
-  return true;
 }
 
 export function activate(context: vscode.ExtensionContext) {
   const output = createOutput();
-  const provider = new MultiModuleViewProvider(context.extensionUri, output);
+  output.appendLine("✅ Multi Module Flutter Tools activated");
+  const provider = new MultiModuleViewProvider(context.extensionUri);
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(

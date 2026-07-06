@@ -1,51 +1,15 @@
 import * as vscode from "vscode";
+import { BaseWebviewProvider, uiScaleMultiplier, getNonce } from "./viewProviderUtils.js";
 
-export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
-  public static readonly viewType = "multi-module-flutter-view";
+export class MultiRepoViewProvider extends BaseWebviewProvider {
+  public static readonly viewType = "multi-repo-flutter-view";
 
-  constructor(
-    private readonly _extensionUri: vscode.Uri,
-    _output: vscode.OutputChannel,
-  ) {}
-
-  public resolveWebviewView(
-    webviewView: vscode.WebviewView,
-    _context: vscode.WebviewViewResolveContext,
-    _token: vscode.CancellationToken,
-  ) {
-    webviewView.webview.options = {
-      enableScripts: true,
-      localResourceRoots: [this._extensionUri],
-    };
-
-    webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-
-    const configChangeListener = vscode.workspace.onDidChangeConfiguration(
-      (e: vscode.ConfigurationChangeEvent) => {
-        if (e.affectsConfiguration("multiModuleFlutter.uiScale")) {
-          webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-        }
-      },
-    );
-
-    webviewView.onDidDispose(() => configChangeListener.dispose());
-
-    webviewView.webview.onDidReceiveMessage(async (data: { type: string; command?: string }) => {
-      if (data.type === "runCommand" && data.command) {
-        await vscode.commands.executeCommand(data.command);
-      }
-    });
+  constructor(extensionUri: vscode.Uri) {
+    super(extensionUri);
   }
 
-  private _getHtmlForWebview(webview: vscode.Webview) {
-    const codiconsUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(
-        this._extensionUri,
-        "dist",
-        "codicons",
-        "codicon.css",
-      ),
-    );
+  protected getHtmlForWebview(webview: vscode.Webview): string {
+    const codiconsUri = this.getCodiconsUri(webview);
 
     const scale = uiScaleMultiplier(
       vscode.workspace.getConfiguration("multiModuleFlutter").get<string>("uiScale", "medium"),
@@ -217,25 +181,4 @@ export class MultiModuleViewProvider implements vscode.WebviewViewProvider {
       </body>
       </html>`;
   }
-}
-
-function uiScaleMultiplier(scale: string): number {
-  switch (scale) {
-    case "compact": return 0.8;
-    case "small": return 0.9;
-    case "medium": return 1;
-    case "large": return 1.1;
-    case "x-large": return 1.25;
-    case "xx-large": return 1.5;
-    default: return 1.25;
-  }
-}
-
-function getNonce() {
-  let text = "";
-  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  for (let i = 0; i < 32; i += 1) {
-    text += possible.charAt(Math.floor(Math.random() * possible.length));
-  }
-  return text;
 }
