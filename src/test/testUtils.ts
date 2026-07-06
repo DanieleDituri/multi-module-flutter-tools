@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { ProjectInfo } from "../types.js";
+import { EventEmitter } from "events";
 
 export class MockOutputChannel {
   name = "Mock Output";
@@ -39,6 +40,88 @@ export class MockOutputChannel {
 
   hasMessage(text: string): boolean {
     return this.messages.some(msg => msg.includes(text));
+  }
+}
+
+export class MockChildProcess extends EventEmitter {
+  stdout = new EventEmitter();
+  stderr = new EventEmitter();
+
+  constructor(public exitCode: number = 0, public shouldError: boolean = false) {
+    super();
+  }
+
+  kill(): void {
+    // Mock kill
+  }
+}
+
+export function createMockSpawn(exitCode: number = 0, shouldError: boolean = false) {
+  return (_command: string, _args: string[], _options?: any) => {
+    const child = new MockChildProcess(exitCode, shouldError);
+
+    setImmediate(() => {
+      if (shouldError) {
+        child.emit("error", new Error("Command failed"));
+      } else {
+        if (exitCode === 0) {
+          (child.stdout as EventEmitter).emit("data", Buffer.from("output"));
+        } else {
+          (child.stderr as EventEmitter).emit("data", Buffer.from("error"));
+        }
+        child.emit("close", exitCode);
+      }
+    });
+
+    return child;
+  };
+}
+
+export class MockFileSystem {
+  files: Map<string, string> = new Map();
+
+  setFile(path: string, content: string): void {
+    this.files.set(path, content);
+  }
+
+  getFile(path: string): string | undefined {
+    return this.files.get(path);
+  }
+
+  async readFile(path: string): Promise<string> {
+    const content = this.files.get(path);
+    if (content === undefined) {
+      const error: any = new Error(`ENOENT: no such file or directory, open '${path}'`);
+      error.code = "ENOENT";
+      throw error;
+    }
+    return content;
+  }
+
+  async writeFile(path: string, content: string): Promise<void> {
+    this.files.set(path, content);
+  }
+}
+
+export class MockGit {
+  stashList: string[] = [];
+
+  async raw(args: string[]): Promise<string> {
+    if (args[0] === "stash" && args[1] === "list") {
+      return this.stashList.join("\n");
+    }
+    if (args[0] === "stash" && args[1] === "pop") {
+      if (this.stashList.length === 0) {
+        throw new Error("No stash entries found");
+      }
+      this.stashList.pop();
+      return "";
+    }
+    return "";
+  }
+
+  addStash(message: string, index: number = 0): void {
+    this.stashList.push(`stash@{${index}}: WIP on main: ${message}`);
   }
 }
 
@@ -105,3 +188,60 @@ export const TEST_CONSTANTS = {
   MODULE_NAMES: ["app", "core", "feature_a"],
   WORKSPACE_PATH: "/workspace",
 };
+
+export function createMockProgress() {
+  return {
+    report: (value: { message?: string; increment?: number }) => {
+      // Mock progress report
+    },
+  };
+}
+
+export function createMockToken() {
+  return new MockCancellationToken();
+}
+
+export const MOCK_PUBSPEC_YAML = `name: app
+description: Test Flutter app
+version: 1.0.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  core:
+    path: ../core
+  feature_a:
+    sdk: flutter
+`;
+
+export const MOCK_PUBSPEC_YAML_WITH_REMOTE_DEPS = `name: app
+description: Test Flutter app
+version: 1.0.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  core:
+    hosted:
+      name: core
+      url: https://pub.dev
+  feature_a:
+    sdk: flutter
+`;
+
+export const MOCK_STASH_LIST = `stash@{0}: WIP on main: setup
+stash@{1}: WIP on main: changes
+`;
+
+export const MOCK_GIT_LOGS = `commit abc123
+Author: Test User <test@example.com>
+Date: Sun Jul 6 2026
+
+    Initial commit
+
+commit def456
+Author: Test User <test@example.com>
+Date: Mon Jul 5 2026
+
+    Second commit
+`;
